@@ -6,7 +6,7 @@ import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 import { metaImagesPlugin } from "./vite-plugin-meta-images";
 
 export default defineConfig(async () => ({
-  base: "/Ohbump-web/",
+  base: "/", // ✅ REQUIRED for Render
 
   plugins: [
     react(),
@@ -36,13 +36,5 @@ export default defineConfig(async () => ({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist"),
     emptyOutDir: true,
-  },
-
-  server: {
-    host: "0.0.0.0",
-    fs: {
-      strict: true,
-      deny: ["**/.*"],
-    },
   },
 }));
