@@ -6,6 +6,8 @@ import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 import { metaImagesPlugin } from "./vite-plugin-meta-images";
 
 export default defineConfig({
+  base: "/Ohbump-web/", // 👈 REQUIRED for GitHub Pages
+
   plugins: [
     react(),
     runtimeErrorOverlay(),
@@ -23,6 +25,7 @@ export default defineConfig({
         ]
       : []),
   ],
+
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "client", "src"),
@@ -30,19 +33,16 @@ export default defineConfig({
       "@assets": path.resolve(import.meta.dirname, "attached_assets"),
     },
   },
-  css: {
-    postcss: {
-      plugins: [],
-    },
-  },
+
   root: path.resolve(import.meta.dirname, "client"),
+
   build: {
-    outDir: path.resolve(import.meta.dirname, "dist/public"),
+    outDir: path.resolve(import.meta.dirname, "dist"), // ✅ FIX
     emptyOutDir: true,
   },
+
   server: {
     host: "0.0.0.0",
-    allowedHosts: true,
     fs: {
       strict: true,
       deny: ["**/.*"],
