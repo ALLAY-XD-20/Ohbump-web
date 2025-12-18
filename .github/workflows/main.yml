@@ -1,60 +1,41 @@
-name: Unzip OhBump-Manager.zip into root (skip .git)
+name: Deploy Website
 
 on:
   push:
-    paths:
-      - "OhBump-Manager.zip"
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 jobs:
-  unzip:
+  build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Ensure ZIP exists
-        run: |
-          if [ ! -f "OhBump-Manager.zip" ]; then
-            echo "OhBump-Manager.zip not found. Exiting safely."
-            exit 0
-          fi
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
 
-      - name: Unzip to temp (exclude .git)
-        run: |
-          mkdir temp_unzip
-          # Unzip everything first
-          unzip -o OhBump-Manager.zip -d temp_unzip
-          rm OhBump-Manager.zip
-          # Remove any .git that came from the ZIP
-          find temp_unzip -type d -name ".git" -exec rm -rf {} + || true
-          rm -f temp_unzip/.gitmodules || true
+      - name: Install dependencies
+        run: npm install
 
-      - name: Move extracted files to ROOT
-        run: |
-          shopt -s dotglob
-          count=$(ls -1 temp_unzip | wc -l)
-          if [ "$count" -eq 1 ] && [ -d temp_unzip/* ]; then
-            mv temp_unzip/*/* .
-          else
-            mv temp_unzip/* .
-          fi
-          rm -rf temp_unzip
+      - name: Build
+        run: npm run build
 
-      - name: Cleanup submodule leftovers (safe)
-        run: |
-          rm -f .gitmodules || true
-          rm -rf .git/modules || true
-          rm -rf node_modules .npm .chunks .cache || true
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
 
-      - name: Commit and push
-        run: |
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
-          git add .
-          git commit -m "Unzip OhBump-Manager.zip (skip .git)" || echo "Nothing to commit"
-          git push
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
