@@ -1,0 +1,84 @@
+name: Unzip OhBump-Manager.zip and restore .git (AUTH FIXED)
+
+on:
+  push:
+    paths:
+      - "OhBump-Manager.zip"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  unzip:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository (keep files)
+        uses: actions/checkout@v4
+        with:
+          clean: false
+          persist-credentials: false
+
+      - name: Ensure ZIP exists
+        run: |
+          if [ ! -f "OhBump-Manager.zip" ]; then
+            echo "ZIP not found, exiting."
+            exit 0
+          fi
+
+      - name: Unzip ZIP to temp
+        run: |
+          mkdir temp_unzip
+          unzip -o OhBump-Manager.zip -d temp_unzip
+          rm OhBump-Manager.zip
+
+      - name: Rename .git → git (inside ZIP)
+        run: |
+          find temp_unzip -type d -name ".git" -exec bash -c 'mv "$0" "${0%/.git}/git"' {} \; || true
+
+      - name: Move files to ROOT
+        run: |
+          shopt -s dotglob
+          count=$(ls -1 temp_unzip | wc -l)
+          if [ "$count" -eq 1 ] && [ -d temp_unzip/* ]; then
+            mv temp_unzip/*/* .
+          else
+            mv temp_unzip/* .
+          fi
+          rm -rf temp_unzip
+
+      - name: Restore .git and set authenticated remote
+        run: |
+          if [ -d "git" ]; then
+            rm -rf .git
+            mv git .git
+          fi
+
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+          git remote remove origin || true
+          git remote add origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/ALLAY-XD-20/Ohbump-web.git"
+
+          git fetch origin || true
+          git checkout -B main
+
+      - name: Create .gitignore (BLOCK junk forever)
+        run: |
+          cat <<EOF > .gitignore
+.local/
+node_modules/
+.npm/
+.cache/
+EOF
+          git add .gitignore
+
+      - name: Commit and FORCE push (AUTH OK)
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+
+          git add .
+          git commit -m "Unzip OhBump-Manager.zip and restore git safely" || echo "Nothing to commit"
+
+          git push -u origin main --force
