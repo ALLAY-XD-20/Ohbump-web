@@ -1,4 +1,4 @@
-name: Unzip OhBump-Manager.zip and restore .git (AUTH FIXED)
+name: Unzip OhBump-Manager.zip into root (skip .git)
 
 on:
   push:
@@ -14,30 +14,27 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository (keep files)
+      - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          clean: false
-          persist-credentials: false
 
       - name: Ensure ZIP exists
         run: |
           if [ ! -f "OhBump-Manager.zip" ]; then
-            echo "ZIP not found, exiting."
+            echo "OhBump-Manager.zip not found. Exiting safely."
             exit 0
           fi
 
-      - name: Unzip ZIP to temp
+      - name: Unzip to temp (exclude .git)
         run: |
           mkdir temp_unzip
+          # Unzip everything first
           unzip -o OhBump-Manager.zip -d temp_unzip
           rm OhBump-Manager.zip
+          # Remove any .git that came from the ZIP
+          find temp_unzip -type d -name ".git" -exec rm -rf {} + || true
+          rm -f temp_unzip/.gitmodules || true
 
-      - name: Rename .git → git (inside ZIP)
-        run: |
-          find temp_unzip -type d -name ".git" -exec bash -c 'mv "$0" "${0%/.git}/git"' {} \; || true
-
-      - name: Move files to ROOT
+      - name: Move extracted files to ROOT
         run: |
           shopt -s dotglob
           count=$(ls -1 temp_unzip | wc -l)
@@ -48,37 +45,16 @@ jobs:
           fi
           rm -rf temp_unzip
 
-      - name: Restore .git and set authenticated remote
+      - name: Cleanup submodule leftovers (safe)
         run: |
-          if [ -d "git" ]; then
-            rm -rf .git
-            mv git .git
-          fi
+          rm -f .gitmodules || true
+          rm -rf .git/modules || true
+          rm -rf node_modules .npm .chunks .cache || true
 
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
-
-          git remote remove origin || true
-          git remote add origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/ALLAY-XD-20/Ohbump-web.git"
-
-          git fetch origin || true
-          git checkout -B main
-
-      - name: Create .gitignore (BLOCK junk forever)
-        run: |
-          cat <<EOF > .gitignore
-.local/
-node_modules/
-.npm/
-.cache/
-EOF
-          git add .gitignore
-
-      - name: Commit and FORCE push (AUTH OK)
+      - name: Commit and push
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-
           git add .
-          git commit -m "Unzip OhBump-Manager.zip and restore git safely" || echo "Nothing to commit"
-
-          git push -u origin main --force
+          git commit -m "Unzip OhBump-Manager.zip (skip .git)" || echo "Nothing to commit"
+          git push
