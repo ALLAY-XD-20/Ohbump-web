@@ -5,23 +5,20 @@ import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 import { metaImagesPlugin } from "./vite-plugin-meta-images";
 
-export default defineConfig({
-  base: "/Ohbump-web/", // 👈 REQUIRED for GitHub Pages
+export default defineConfig(async () => ({
+  base: "/Ohbump-web/",
 
   plugins: [
     react(),
     runtimeErrorOverlay(),
     tailwindcss(),
     metaImagesPlugin(),
+
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
       ? [
-          await import("@replit/vite-plugin-cartographer").then((m) =>
-            m.cartographer(),
-          ),
-          await import("@replit/vite-plugin-dev-banner").then((m) =>
-            m.devBanner(),
-          ),
+          (await import("@replit/vite-plugin-cartographer")).cartographer(),
+          (await import("@replit/vite-plugin-dev-banner")).devBanner(),
         ]
       : []),
   ],
@@ -37,7 +34,7 @@ export default defineConfig({
   root: path.resolve(import.meta.dirname, "client"),
 
   build: {
-    outDir: path.resolve(import.meta.dirname, "dist"), // ✅ FIX
+    outDir: path.resolve(import.meta.dirname, "dist"),
     emptyOutDir: true,
   },
 
@@ -48,4 +45,4 @@ export default defineConfig({
       deny: ["**/.*"],
     },
   },
-});
+}));
