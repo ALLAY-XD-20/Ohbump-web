@@ -1,0 +1,71 @@
+name: Unzip OhBump-Manager.zip and restore .git
+
+on:
+  push:
+    paths:
+      - "OhBump-Manager.zip"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  unzip:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository (without cleaning)
+        uses: actions/checkout@v4
+        with:
+          clean: false
+
+      - name: Ensure ZIP exists
+        run: |
+          if [ ! -f "OhBump-Manager.zip" ]; then
+            echo "ZIP not found, exiting safely."
+            exit 0
+          fi
+
+      - name: Unzip ZIP to temp
+        run: |
+          mkdir temp_unzip
+          unzip -o OhBump-Manager.zip -d temp_unzip
+          rm OhBump-Manager.zip
+
+      - name: Rename .git to git (inside extracted files)
+        run: |
+          find temp_unzip -type d -name ".git" -exec bash -c 'mv "$0" "${0%/.git}/git"' {} \; || true
+
+      - name: Move extracted files to ROOT
+        run: |
+          shopt -s dotglob
+          count=$(ls -1 temp_unzip | wc -l)
+
+          if [ "$count" -eq 1 ] && [ -d temp_unzip/* ]; then
+            mv temp_unzip/*/* .
+          else
+            mv temp_unzip/* .
+          fi
+          rm -rf temp_unzip
+
+      - name: Restore git folder name (git → .git)
+        run: |
+          if [ -d "git" ]; then
+            echo "Restoring .git folder"
+            rm -rf .git
+            mv git .git
+          fi
+
+      - name: Fix git config
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          rm -f .gitmodules || true
+          rm -rf .git/modules || true
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add .
+          git commit -m "Unzip OhBump-Manager.zip and restore .git" || echo "Nothing to commit"
+          git push
